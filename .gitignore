@@ -3,6 +3,7 @@
 .cache/
 __pycache__/
 
+
 # submodule
 godot-cpp/
 
@@ -22,6 +23,8 @@ addons/rapidxml_gdextension/build
 compile_commands.json
 src/generated/
 src/generated-document/
+src/gen/
+
 
 # Test project files
 .godot/
