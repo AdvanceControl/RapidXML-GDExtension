@@ -1,0 +1,73 @@
+# Godot Engine GDExtension Documentation Template.
+# Copyright (C) 2024 Your Name or Project Name
+# This file is distributed under the same license as the Godot source code.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: RapidXML GDExtension\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-08-30 12:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: RapidXML.xml:brief_description
+msgid "A high-level interface for parsing XML files based on RapidXML. See also [XMLParser]."
+msgstr ""
+
+#: RapidXML.xml:description
+msgid ""
+"A RapidXML-based parser for [url=https://en.wikipedia.org/wiki/XML]XML[/url] files, providing a simple and efficient API to parse and query XML data.\n"
+"        The following is an example of parsing an XML file with [RapidXML]. It prints all elements and their corresponding attributes as a dictionary:\n"
+"        [codeblock]\n"
+"        var my_xml = RapidXML.new()\n"
+"        var success = my_xml.parse_file(\"res://test.xml\")\n"
+"        if success:\n"
+"            print(my_xml.get_node_value(\"data\"))\n"
+"            print(my_xml.get_node_attribute(\"data\", \"value\"))\n"
+"		[/codeblock]"
+msgstr ""
+
+#: RapidXML.xml:methods/parse_string:description
+msgid "Parses a string containing XML data. Returns [code]true[/code] on success, or [code]false[/code] on failure.\n                [b]Note:[/b] This method clears any previously parsed data."
+msgstr ""
+
+#: RapidXML.xml:methods/get_node_value:description
+msgid "Gets the text value of a node by its path. The path format is [code]root/child/leaf[/code]. Returns an empty string if the node does not exist."
+msgstr ""
+
+#: RapidXML.xml:methods/get_node_attribute:description
+msgid "Gets an attribute of a node by its path. Returns an empty string if the node or attribute does not exist.\n                [b]Note:[/b] For the path format, see [method get_node_value]."
+msgstr ""
+
+#: RapidXML.xml:methods/clear:description
+msgid "Clears all parsed XML data and resets the object's state for reuse."
+msgstr ""
+
+#: RapidXML.xml:methods/get_last_error:description
+msgid "Returns the error message from the last parsing attempt. Returns an empty string if there was no error."
+msgstr ""
+
+#: RapidXML.xml:methods/parse_file:description
+msgid "Parses an XML file. Returns [code]true[/code] on success, or [code]false[/code] on failure.\n                See also [method parse_string]."
+msgstr ""
+
+#: RapidXML.xml:methods/get_child_nodes:description
+msgid "Gets all direct child nodes of a specified node.\n                [b]Note:[/b] For the path format, see [method get_node_value]."
+msgstr ""
+
+#: RapidXML.xml:methods/get_node_attributes:description
+msgid "Gets all attributes of a specified node.\n                [b]Note:[/b] For the path format, see [method get_node_value]."
+msgstr ""
+
+#: RapidXML.xml:methods/get_root_node_name:description
+msgid "Gets the name of the root node."
+msgstr ""
+
+#: RapidXML.xml:methods/get_all_node_paths:description
+msgid "Gets the paths of all nodes in the document."
+msgstr ""

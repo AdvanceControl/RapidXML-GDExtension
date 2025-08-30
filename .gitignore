@@ -1,0 +1,36 @@
+# Cache files
+.scons*
+.cache/
+__pycache__/
+
+# submodule
+godot-cpp/
+
+# Built files
+addons/rapidxml_gdextension/build
+*.o
+*.os
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.framework
+*.xcframework
+*.wasm
+compile_commands.json
+src/generated/
+src/generated-document/
+
+# Test project files
+.godot/
+test/
+
+# test files
+test*.*
+
+
+# Some IDE generated configuration files
+.vs/
+.vscode/

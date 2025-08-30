@@ -1,0 +1,68 @@
+# Godot Engine GDExtension Documentation Template.
+# Copyright (C) 2024 Your Name or Project Name
+# This file is distributed under the same license as the Godot source code.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: RapidXML GDExtension\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-08-30 12:00+0000\n"
+"PO-Revision-Date: 2025-08-30 12:00+0800\n"
+"Last-Translator: Your Name <your.email@example.com>\n"
+"Language-Team: Chinese (Simplified) <zh_CN@li.org>\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: RapidXML.xml:brief_description
+msgid "A high-level interface for parsing XML files based on RapidXML. See also [XMLParser]."
+msgstr "基于 RapidXML 来解析 XML 文件的高阶接口，另见[XMLParser]。"
+
+#: RapidXML.xml:description
+msgid ""
+"A RapidXML-based parser for [url=https://en.wikipedia.org/wiki/XML]XML[/url] files, providing a simple and efficient API to parse and query XML data.\n"
+"Before obtaining the data, please first use [method parse_string] or [method parse_file] to parse the XML data."
+msgstr ""
+"为 [url=https://zh.wikipedia.org/wiki/XML]XML[/url] 文件创建的基于 RapidXML 的解析器，提供简单、高效的 API 来解析和查询 XML 数据。\n"
+"获取数据前请先试用[method parse_string]或[method parse_file]解析XML数据"
+
+#: RapidXML.xml:methods/parse_string:description
+msgid "Parses a string containing XML data. Returns [code]true[/code] on success, or [code]false[/code] on failure.\n[b]Note:[/b] This method clears any previously parsed data."
+msgstr "解析一个包含 XML 数据的字符串。成功返回 [code]true[/code]，失败则返回 [code]false[/code] 并生成错误。\n[b]注意：[/b] 该方法会清理之前解析的数据。"
+
+#: RapidXML.xml:methods/get_node_value:description
+msgid "Gets the text value of a node by its path. The path format is [code]root/child/leaf[/code]. Returns an empty string if the node does not exist."
+msgstr "根据路径获取节点的文本值。路径格式为 [code]root/child/leaf[/code]。节点不存在时返回空字符串"
+
+#: RapidXML.xml:methods/get_node_attribute:description
+msgid "Gets an attribute of a node by its path. Returns an empty string if the node or attribute does not exist.\n[b]Note:[/b] For the path format, see [method get_node_value]."
+msgstr "根据路径获取节点的属性。节点不存在时返回空字符串，路径格式\n[b]注意：[/b] 有关路径格式请参阅[method get_node_value]。"
+
+#: RapidXML.xml:methods/clear:description
+msgid "Clears all parsed XML data and resets the object's state for reuse."
+msgstr "清空解析出 XML 数据，重置对象状态以便复用。"
+
+#: RapidXML.xml:methods/get_last_error:description
+msgid "Returns the error message from the last parsing attempt. Returns an empty string if there was no error."
+msgstr "返回最后一次解析的错误，没有错误则返回空字符串。"
+
+#: RapidXML.xml:methods/parse_file:description
+msgid "Parses an XML file. Returns [code]true[/code] on success, or [code]false[/code] on failure.\nSee also [method parse_string]."
+msgstr "解析一个 XML 文件。成功返回 [code]true[/code]，失败则返回 [code]false[/code] 并生成错误。\n另见[method parse_string]。"
+
+#: RapidXML.xml:methods/get_child_nodes:description
+msgid "Gets all direct child nodes of a specified node.\n[b]Note:[/b] For the path format, see [method get_node_value]."
+msgstr "获取指定节点的所有子节点。\n[b]注意：[/b] 有关路径格式请参阅[method get_node_value]。"
+
+#: RapidXML.xml:methods/get_node_attributes:description
+msgid "Gets all attributes of a specified node.\n[b]Note:[/b] For the path format, see [method get_node_value]."
+msgstr "获取指定节点所有属性。\n[b]注意：[/b] 有关路径格式请参阅[method get_node_value]。"
+
+#: RapidXML.xml:methods/get_root_node_name:description
+msgid "Gets the name of the root node."
+msgstr "获取根节点名称。"
+
+#: RapidXML.xml:methods/get_all_node_paths:description
+msgid "Gets the paths of all nodes in the document."
+msgstr "获取所有节点的路径。"

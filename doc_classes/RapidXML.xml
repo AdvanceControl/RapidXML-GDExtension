@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RapidXML" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A high-level interface for parsing XML files based on RapidXML. See also [XMLParser].
+	</brief_description>
+	<description>
+        A RapidXML-based parser for [url=https://en.wikipedia.org/wiki/XML]XML[/url] files, providing a simple and efficient API to parse and query XML data.
+        Before obtaining the data, please first use [method parse_string] or [method parse_file] to parse the XML data.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+        <method name="parse_file">
+            <return type="bool" />
+            <param index="0" name="file_path" type="String" />
+            <description>
+                Parses an XML file. Returns [code]true[/code] on success, or [code]false[/code] on failure.
+                See also [method parse_string].
+            </description>
+        </method>
+		<method name="parse_string">
+			<return type="bool" />
+            <param index="0" name="content" type="String" />
+			<description>
+                Parses a string containing XML data. Returns [code]true[/code] on success, or [code]false[/code] on failure.
+                [b]Note:[/b] This method clears any previously parsed data.
+			</description>
+		</method>
+        <method name="get_node_value">
+            <return type="String" />
+            <param index="0" name="path" type="String" />
+            <description>
+                Gets the text value of a node by its path. The path format is [code]root/child/leaf[/code]. Returns an empty string if the node does not exist.
+            </description>
+        </method>
+        <method name="get_node_attribute">
+            <return type="String" />
+            <param index="0" name="path" type="String" />
+            <param index="1" name="attribute_name" type="String" />
+            <description>
+                Gets an attribute of a node by its path. Returns an empty string if the node or attribute does not exist.
+                [b]Note:[/b] For the path format, see [method get_node_value].
+            </description>
+        </method>
+        <method name="clear">
+            <return type="void" />
+            <description>
+                Clears all parsed XML data and resets the object's state for reuse.
+            </description>
+        </method>
+        <method name="get_last_error">
+            <return type="String" />
+            <description>
+                Returns the error message from the last parsing attempt. Returns an empty string if there was no error.
+            </description>
+        </method>
+        <method name="get_child_nodes">
+            <return type="PackedStringArray" />
+            <param index="0" name="path" type="String" />
+            <description>
+                Gets all direct child nodes of a specified node.
+                [b]Note:[/b] For the path format, see [method get_node_value].
+            </description>
+        </method>
+        <method name="get_node_attributes">
+            <return type="Dictionary" />
+            <param index="0" name="path" type="String" />
+            <description>
+                Gets all attributes of a specified node.
+                [b]Note:[/b] For the path format, see [method get_node_value].
+            </description>
+        </method>
+        <method name="get_root_node_name">
+            <return type="String" />
+            <description>
+                Gets the name of the root node.
+            </description>
+        </method>
+        <method name="get_all_node_paths">
+            <return type="PackedStringArray" />
+            <description>
+                Gets the paths of all nodes in the document.
+            </description>
+        </method>
+	</methods>
+	<members>
+	</members>
+	<signals>
+	</signals>
+	<constants>
+	</constants>
+</class>
