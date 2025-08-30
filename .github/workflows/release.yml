@@ -1,0 +1,174 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_windows:
+    strategy:
+      matrix:
+        arch: ['x86_64', 'x86_32', 'arm64']
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install scons
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build for Windows ${{ matrix.arch }}
+        run: |
+          scons platform=windows target=template_debug arch=${{ matrix.arch }}
+          scons platform=windows target=template_release arch=${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}-libs
+          path: addons/rapidxml_gdextension/build/*.dll
+
+  build_linux:
+    strategy:
+      matrix:
+        arch: ['x86_64', 'x86_32', 'arm64']
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: docker/setup-qemu-action@v3
+      - name: Install dependencies for ${{ matrix.arch }}
+        run: |
+          sudo apt-get update
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+            sudo apt-get install -y build-essential scons
+          elif [ "${{ matrix.arch }}" = "x86_32" ]; then
+            sudo apt-get install -y gcc-multilib g++-multilib scons
+          elif [ "${{ matrix.arch }}" = "arm64" ]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu scons
+          fi
+      - name: Build for Linux ${{ matrix.arch }}
+        run: |
+          scons platform=linux target=template_debug arch=${{ matrix.arch }}
+          scons platform=linux target=template_release arch=${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}-libs
+          path: addons/rapidxml_gdextension/build/*.so
+
+  build_macos:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - run: pip3 install scons
+      - name: Build for macOS (Universal)
+        run: |
+          scons platform=macos target=template_debug arch=universal
+          scons platform=macos target=template_release arch=universal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-libs
+          path: addons/rapidxml_gdextension/build/*.dylib
+
+  build_web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - run: pip3 install scons
+      - uses: mymindstorm/setup-emsdk@v14
+      - name: Build for Web
+        run: |
+          scons platform=web target=template_debug javascript_threads=yes
+          scons platform=web target=template_release javascript_threads=yes
+          scons platform=web target=template_debug javascript_threads=no
+          scons platform=web target=template_release javascript_threads=no
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-libs
+          path: addons/rapidxml_gdextension/build/*.wasm
+          
+  build_android:
+    strategy:
+      matrix:
+        android_arch: ['arm64v8', 'armv7', 'x86_64', 'x86']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - run: pip3 install scons
+      - name: Setup Android NDK
+        uses: nanasess/setup-android-ndk@v1
+        with:
+          ndk-version: r25c
+      - name: Build for Android ${{ matrix.android_arch }}
+        run: |
+          scons platform=android target=template_debug android_arch=${{ matrix.android_arch }}
+          scons platform=android target=template_release android_arch=${{ matrix.android_arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ matrix.android_arch }}-libs
+          path: addons/rapidxml_gdextension/build/*.so
+
+  create_release_package:
+    needs: [build_windows, build_linux, build_macos, build_web, build_android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Create release directory structure
+        run: mkdir -p release_package/addons/rapidxml_gdextension/build
+
+      - name: Download all library artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_package/addons/rapidxml_gdextension/build
+          merge-multiple: true 
+          
+      - name: Prepare other addon files
+        run: |
+          cp my_extension.gdextension release_package/addons/rapidxml_gdextension/
+ 
+          cp LICENSE release_package/addons/rapidxml_gdextension/
+          cp README.md release_package/addons/rapidxml_gdextension/
+
+      - name: List files for verification
+        run: ls -R release_package
+        
+      - name: Create Zip archive
+        run: |
+          cd release_package
+          zip -r ../rapidxml_gdextension-release.zip .
+          cd ..
+
+      - name: Upload final release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-package
+          path: rapidxml_gdextension-release.zip
+
+  publish_release:
+    needs: [create_release_package]
+    runs-on: ubuntu-latest
+
+    if: github.repository_owner == github.actor
+    steps:
+      - name: Download release package
+        uses: actions/download-artifact@v4
+        with:
+          name: release-package
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: RapidXML GDExtension ${{ github.ref_name }}
+          files: rapidxml_gdextension-release.zip
