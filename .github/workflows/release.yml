@@ -1,226 +1,116 @@
-name: Build
+name: 🛠️ Build and Release GDExtension
 
 on:
   push:
     tags: ['v*']
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 env:
-  SCONS_CACHE_PATH: ${{ github.workspace }}/.scons-cache
-  SCONS_VERSION: 4.6.0
   ADDON_NAME: rapidxml_gdextension
 
 jobs:
-  build_linux:
-    name: Linux (${{ matrix.arch }}, ${{ matrix.target }})
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Matrix is unchanged, it correctly defines the targets
+        target:
+          [
+            { platform: linux, arch: x86_64, os: ubuntu-22.04 },
+            { platform: linux, arch: x86_32, os: ubuntu-22.04 },
+            { platform: windows, arch: x86_64, os: windows-latest },
+            { platform: windows, arch: x86_32, os: windows-latest },
+            { platform: macos, arch: universal, os: macos-latest },
+            { platform: android, arch: arm64, os: ubuntu-22.04 },
+            { platform: android, arch: arm32, os: ubuntu-22.04 },
+            { platform: web, arch: wasm32, os: ubuntu-22.04 },
+          ]
+        target-type: [template_debug, template_release]
+        float-precision: [single]
+
+    runs-on: ${{ matrix.target.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Initialize and Verify Submodules
+        run: |
+          git submodule init
+          git submodule update --recursive
+          if [ ! -f "godot-cpp/SConstruct" ]; then exit 1; fi
+
+      - name: Install multilib support
+        if: ${{ matrix.target.platform == 'linux' && matrix.target.arch == 'x86_32' }}
+        run: sudo apt-get update && sudo apt-get install -y gcc-multilib g++-multilib
+
+      - name: Setup godot-cpp dependencies
+        uses: ./godot-cpp/.github/actions/setup-godot-cpp
+        with:
+          platform: ${{ matrix.target.platform }}
+          em-version: 3.1.62
+
+      - name: Restore SCons cache
+        uses: ./godot-cpp/.github/actions/godot-cache-restore
+        with:
+          scons-cache: ${{ github.workspace }}/.scons-cache/
+          cache-name: ${{ matrix.target.platform }}-${{ matrix.target.arch }}-${{ matrix.float-precision }}-${{ matrix.target-type }}
+
+      - name: Compile GDExtension Package
+        shell: sh
+        env:
+          SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
+        # --- CHANGE 1: Use "package" to build the full addon directory ---
+        run: |
+          scons package target=${{ matrix.target-type }} platform=${{ matrix.target.platform }} arch=${{ matrix.target.arch }} precision=${{ matrix.float-precision }}
+
+      - name: Save SCons cache
+        uses: ./godot-cpp/.github/actions/godot-cache-save
+        with:
+          scons-cache: ${{ github.workspace }}/.scons-cache/
+          cache-name: ${{ matrix.target.platform }}-${{ matrix.target.arch }}-${{ matrix.float-precision }}-${{ matrix.target-type }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ADDON_NAME }}-${{ matrix.target.platform }}-${{ matrix.target.arch }}-${{ matrix.float-precision }}-${{ matrix.target-type }}
+          # --- CHANGE 2: Upload the entire "addons" folder which now contains the complete package ---
+          path: addons/
+
+  # The merge job does not need changes, it will correctly merge the artifacts
+  merge:
     runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [template_debug, template_release]
-        arch: [x86_64, x86_32, arm64]
-        include:
-          - arch: x86_32
-            packages: g++-multilib
-          - arch: arm64
-            packages: g++-aarch64-linux-gnu
+    needs: build
     steps:
-      - uses: actions/checkout@v4
+      - name: Merge Artifacts
+        uses: actions/upload-artifact/merge@v4
         with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Install SCons
-        run: python -m pip install scons==${{ env.SCONS_VERSION }}
-      - name: Dump Godot Extension API for Linux
-        run: |
-          cd godot-cpp
-      - name: Setup dependencies
-        if: matrix.packages
-        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.packages }}
-      - name: Configure SCons Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.SCONS_CACHE_PATH }}
-          key: ${{ runner.os }}-linux-${{ matrix.arch }}-${{ matrix.target }}-${{ hashFiles('SConstruct', 'src/**') }}
-          restore-keys: |
-            ${{ runner.os }}-linux-${{ matrix.arch }}-${{ matrix.target }}-
-      - name: Compile Extension
-        run: scons package platform=linux arch=${{ matrix.arch }} target=${{ matrix.target }} -j$(nproc)
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: addons/
-
-  build_windows:
-    name: Windows (${{ matrix.arch }}, ${{ matrix.target }})
-    runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [template_debug, template_release]
-        arch: [x86_64, x86_32, arm64]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Install SCons
-        run: python -m pip install scons==${{ env.SCONS_VERSION }}
-      - name: Setup MSVC environment
-        run: echo "MSVC environment is automatically configured on Windows runners."
-      - name: Dump Godot Extension API for Windows
-        run: |
-          # 同样，依赖 godot-cpp 的 SConscript 或手动提供 API JSON
-          echo "Relying on godot-cpp's SConscript to handle API dumping for Windows."
-
-
-      - name: Configure SCons Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.SCONS_CACHE_PATH }}
-          key: ${{ runner.os }}-windows-${{ matrix.arch }}-${{ matrix.target }}-${{ hashFiles('SConstruct', 'src/**') }}
-          restore-keys: |
-            ${{ runner.os }}-windows-${{ matrix.arch }}-${{ matrix.target }}-
-      - name: Compile Extension
-        run: scons package platform=windows arch=${{ matrix.arch }} target=${{ matrix.target }}
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: addons/
-
-  build_macos:
-    name: macOS (${{ matrix.arch }}, ${{ matrix.target }})
-    runs-on: macos-13
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [template_debug, template_release]
-        arch: [universal]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Install SCons
-        run: python -m pip install scons==${{ env.SCONS_VERSION }}
-      - name: Dump Godot Extension API for macOS
-        run: |
-          # 同样，依赖 godot-cpp 的 SConscript 或手动提供 API JSON
-          echo "Relying on godot-cpp's SConscript to handle API dumping for macOS."
-
-      - name: Configure SCons Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.SCONS_CACHE_PATH }}
-          key: ${{ runner.os }}-macos-universal-${{ matrix.target }}-${{ hashFiles('SConstruct', 'src/**') }}
-          restore-keys: |
-            ${{ runner.os }}-macos-universal-${{ matrix.target }}-
-      - name: Compile Extension
-        run: scons package platform=macos arch=${{ matrix.arch }} target=${{ matrix.target }}
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: addons/
-
-  build_android:
-    name: Android (${{ matrix.arch }}, ${{ matrix.target }})
-    runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [template_debug, template_release]
-        arch: [arm64v8, armv7, x86_64, x86]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 0
-      - name: Install Python and SCons
-        uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - run: python -m pip install scons==${{ env.SCONS_VERSION }}
-      - name: Install JDK 17
-        uses: actions/setup-java@v3
-        with: { java-version: 17, distribution: temurin }
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Install NDK r23c
-        uses: nttld/setup-ndk@v1
-        with: { ndk-version: r23c, link-to-sdk: true }
-      - name: Configure SCons Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.SCONS_CACHE_PATH }}
-          key: ${{ runner.os }}-android-${{ matrix.arch }}-${{ matrix.target }}-${{ hashFiles('SConstruct', 'src/**') }}
-          restore-keys: |
-            ${{ runner.os }}-android-${{ matrix.arch }}-${{ matrix.target }}-
-      - name: Compile Extension
-        run: scons package platform=android android_arch=${{ matrix.arch }} target=${{ matrix.target }} -j$(nproc)
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with: { name: build-artifacts, path: addons/ }
-
-  build_web:
-    name: Web (${{ matrix.arch }}, ${{ matrix.target }}, ${{ matrix.threads && 'threads' || 'nothreads' }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [template_debug, template_release]
-        arch: [wasm32]
-        threads: [true, false]
-        include:
-          - arch: wasm32
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 0
-      - name: Install Python and SCons
-        uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - run: python -m pip install scons==${{ env.SCONS_VERSION }}
-      - name: Install Emscripten
-        uses: mymindstorm/setup-emsdk@v11
-        with: { version: '3.1.60', actions-cache-folder: 'emsdk-cache' }
-      - name: Configure SCons Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.SCONS_CACHE_PATH }}
-          key: ${{ runner.os }}-web-${{ matrix.arch }}-${{ matrix.target }}-${{ matrix.threads && 'threads' || 'nothreads' }}-${{ hashFiles('SConstruct', 'src/**') }}
-          restore-keys: |
-            ${{ runner.os }}-web-${{ matrix.arch }}-${{ matrix.target }}-${{ matrix.threads && 'threads' || 'nothreads' }}-
-      - name: Compile Extension
-        run: scons package platform=web arch=${{ matrix.arch }} target=${{ matrix.target }} threads=${{ matrix.threads }} -j$(nproc)
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with: { name: build-artifacts, path: addons/ }
+          name: ${{ env.ADDON_NAME }}-builds
+          pattern: ${{ env.ADDON_NAME }}-*
+          delete-merged: true
 
   create_release:
     name: Create Release
-    needs: [build_linux, build_windows, build_macos, build_android, build_web]
     runs-on: ubuntu-latest
+    needs: merge
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - name: Download all build artifacts
+      - name: Download all merged artifacts
         uses: actions/download-artifact@v4
-        with: { name: build-artifacts, path: addons }
+        with:
+          name: ${{ env.ADDON_NAME }}-builds
+          # --- CHANGE 3: The artifact already contains the "addons" folder structure ---
+          path: . 
+
       - name: Create ZIP archive
-        run: zip -r ${{ env.ADDON_NAME }}.zip addons/
+        run: |
+          # The downloaded artifact already has the correct structure 'addons/rapidxml_gdextension/...'
+          # We just need to zip the 'addons' folder.
+          zip -r ${{ env.ADDON_NAME }}.zip addons/
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
