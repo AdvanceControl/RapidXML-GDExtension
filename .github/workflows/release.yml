@@ -1,12 +1,12 @@
-name: Build and Release
-
+name: Build
 on:
   push:
     tags: ['v*']
+  pull_request:
   workflow_dispatch:
 
 env:
-  SCONS_CACHE: ${{ github.workspace }}/.scons-cache
+  SCONS_CACHE_PATH: ${{ github.workspace }}/.scons-cache
   SCONS_VERSION: 4.6.0
   ADDON_NAME: rapidxml_gdextension
 
@@ -26,30 +26,30 @@ jobs:
             packages: g++-aarch64-linux-gnu
     steps:
       - uses: actions/checkout@v4
-      - name: Initialize and Update Submodules
-        run: |
-          git submodule init
-          git submodule update --recursive
+        with:
+          submodules: recursive
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Set up SCons
+        with:
+          python-version: '3.11'
+      - name: Install SCons
         run: python -m pip install scons==${{ env.SCONS_VERSION }}
       - name: Setup dependencies
         if: matrix.packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ${{ matrix.packages }}
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.packages }}
       - name: Configure SCons Cache
         uses: actions/cache@v4
         with:
-          path: ${{ env.SCONS_CACHE }}
+          path: ${{ env.SCONS_CACHE_PATH }}
           key: ${{ runner.os }}-linux-${{ matrix.arch }}-${{ matrix.target }}-${{ hashFiles('SConstruct', 'src/**') }}
-      - name: Build and Package
-        run: scons package platform=linux arch=${{ matrix.arch }} target=${{ matrix.target }}
+      - name: Compile Extension
+        run: scons package platform=linux arch=${{ matrix.arch }} target=${{ matrix.target }} -j$(nproc)
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
-        with: { name: build-artifacts, path: addons/ }
+        with:
+          name: build-artifacts
+          path: addons/
 
   build_windows:
     name: Windows (${{ matrix.arch }}, ${{ matrix.target }})
@@ -61,60 +61,158 @@ jobs:
         arch: [x86_64, x86_32, arm64]
     steps:
       - uses: actions/checkout@v4
-      - name: Initialize and Update Submodules
-        run: |
-          git submodule init
-          git submodule update --recursive
+        with:
+          submodules: recursive
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Set up SCons
+        with:
+          python-version: '3.11'
+      - name: Install SCons
         run: python -m pip install scons==${{ env.SCONS_VERSION }}
+      - name: Setup godot-cpp (for MSVC)
+        uses: ./godot-cpp/.github/actions/setup-godot-cpp
+        with:
+          platform: windows
+          scons-version: ${{ env.SCONS_VERSION }}
+          windows-compiler: msvc
       - name: Configure SCons Cache
         uses: actions/cache@v4
         with:
-          path: ${{ env.SCONS_CACHE }}
+          path: ${{ env.SCONS_CACHE_PATH }}
           key: ${{ runner.os }}-windows-${{ matrix.arch }}-${{ matrix.target }}-${{ hashFiles('SConstruct', 'src/**') }}
-      - name: Build and Package
+      - name: Compile Extension
         run: scons package platform=windows arch=${{ matrix.arch }} target=${{ matrix.target }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
-        with: { name: build-artifacts, path: addons/ }
+        with:
+          name: build-artifacts
+          path: addons/
 
   build_macos:
-    name: macOS (universal, ${{ matrix.target }})
+    name: macOS (${{ matrix.arch }}, ${{ matrix.target }})
     runs-on: macos-13
-    strategy: { fail-fast: false, matrix: { target: [template_debug, template_release] } }
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [template_debug, template_release]
+        arch: [universal]
     steps:
       - uses: actions/checkout@v4
-      - name: Initialize and Update Submodules
-        run: |
-          git submodule init
-          git submodule update --recursive
+        with:
+          submodules: true
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Set up SCons
+        with:
+          python-version: '3.11'
+      - name: Install SCons
         run: python -m pip install scons==${{ env.SCONS_VERSION }}
       - name: Configure SCons Cache
         uses: actions/cache@v4
         with:
-          path: ${{ env.SCONS_CACHE }}
+          path: ${{ env.SCONS_CACHE_PATH }}
           key: ${{ runner.os }}-macos-universal-${{ matrix.target }}-${{ hashFiles('SConstruct', 'src/**') }}
-      - name: Build and Package
-        run: scons package platform=macos arch=universal target=${{ matrix.target }}
+      - name: Compile Extension
+        run: scons package platform=macos arch=${{ matrix.arch }} target=${{ matrix.target }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
-        with: { name: build-artifacts, path: addons/ }
+        with:
+          name: build-artifacts
+          path: addons/
+
+  build_android:
+    name: Android (${{ matrix.arch }}, ${{ matrix.target }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [template_debug, template_release]
+        arch: [arm64v8, armv7, x86_64, x86]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Install Python and SCons
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install scons==${{ env.SCONS_VERSION }}
+      - name: Install JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install NDK r23c
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r23c
+          link-to-sdk: true
+      - name: Configure SCons Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SCONS_CACHE_PATH }}
+          key: ${{ runner.os }}-android-${{ matrix.arch }}-${{ matrix.target }}-${{ hashFiles('SConstruct', 'src/**') }}
+      - name: Compile Extension
+        run: scons package platform=android android_arch=${{ matrix.arch }} target=${{ matrix.target }} -j$(nproc)
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: addons/
+
+  build_web:
+    name: Web (${{ matrix.arch }}, ${{ matrix.target }}, ${{ matrix.threads && 'threads' || 'nothreads' }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [template_debug, template_release]
+        arch: [wasm32]
+        threads: [true, false]
+        include:
+          - arch: wasm32
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Install Python and SCons
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install scons==${{ env.SCONS_VERSION }}
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v11
+        with:
+          version: '3.1.60'
+          actions-cache-folder: 'emsdk-cache'
+      - name: Configure SCons Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SCONS_CACHE_PATH }}
+          key: ${{ runner.os }}-web-${{ matrix.arch }}-${{ matrix.target }}-${{ matrix.threads && 'threads' || 'nothreads' }}-${{ hashFiles('SConstruct', 'src/**') }}
+      - name: Compile Extension
+        run: scons package platform=web arch=${{ matrix.arch }} target=${{ matrix.target }} threads=${{ matrix.threads }} -j$(nproc)
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: addons/
 
   create_release:
     name: Create Release
-    needs: [build_linux, build_windows, build_macos]
+    needs: [build_linux, build_windows, build_macos, build_android, build_web]
     runs-on: ubuntu-latest
     steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
-        with: { name: build-artifacts, path: addons }
+        with:
+          name: build-artifacts
+          path: addons
       - name: Create ZIP archive
         run: zip -r ${{ env.ADDON_NAME }}.zip addons/
       - name: Create GitHub Release
