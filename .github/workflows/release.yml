@@ -26,8 +26,10 @@ jobs:
             packages: g++-aarch64-linux-gnu
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
+      - name: Initialize and Update Submodules
+        run: |
+          git submodule init
+          git submodule update --recursive
       - name: Set up Python
         uses: actions/setup-python@v5
         with: { python-version: '3.11' }
@@ -59,8 +61,10 @@ jobs:
         arch: [x86_64, x86_32, arm64]
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true  # <-- 关键修复：拉取子模块
+      - name: Initialize and Update Submodules
+        run: |
+          git submodule init
+          git submodule update --recursive
       - name: Set up Python
         uses: actions/setup-python@v5
         with: { python-version: '3.11' }
@@ -83,8 +87,10 @@ jobs:
     strategy: { fail-fast: false, matrix: { target: [template_debug, template_release] } }
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true  # <-- 关键修复：拉取子模块
+      - name: Initialize and Update Submodules
+        run: |
+          git submodule init
+          git submodule update --recursive
       - name: Set up Python
         uses: actions/setup-python@v5
         with: { python-version: '3.11' }
