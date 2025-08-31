@@ -3,7 +3,6 @@ name: 🛠️ Build and Release GDExtension
 on:
   push:
     tags: ['v*']
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
